@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Real-Time Process Monitoring</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-4xl font-bold text-center text-blue-600 mb-8">Real-Time Process Monitoring Dashboard</h1>
+
+    <!-- Dashboard Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-xl font-semibold mb-4">Process Status Summary</h2>
+        <canvas id="processStatusPieChart" class="w-full h-48"></canvas>
+      </div>
+
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-xl font-semibold mb-4">Signature Verification</h2>
+        <canvas id="signatureVerificationChart" class="w-full h-48"></canvas>
+      </div>
+
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-xl font-semibold mb-4">Parent PID Distribution</h2>
+        <canvas id="parentPIDChart" class="w-full h-48"></canvas>
+      </div>
+
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-xl font-semibold mb-4">IP Address Frequency</h2>
+        <canvas id="geoIPChart" class="w-full h-48"></canvas>
+      </div>
+    </div>
+
+    <!-- Sorting and Filter Controls -->
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <select id="sortSelect" class="p-2 border rounded" onchange="renderProcesses()">
+          <option value="default">Sort by</option>
+          <option value="cpu">CPU Usage</option>
+          <option value="memory">Memory Usage</option>
+        </select>
+
+        <label class="ml-4 text-sm">
+          <input type="checkbox" id="filterSuspicious" onchange="renderProcesses()"> Show Suspicious Only
+        </label>
+      </div>
+    </div>
+
+    <!-- Top CPU Consumers -->
+    <div class="bg-white p-6 rounded-lg shadow mb-8">
+      <h2 class="text-xl font-semibold mb-4">Top CPU-Consuming Processes</h2>
+      <ul id="topCpuList" class="list-disc pl-6 text-gray-700"></ul>
+    </div>
+
+    <!-- Individual Process Cards -->
+    <div id="loading" class="text-center text-lg text-gray-600 mb-6">Fetching process data...</div>
+    <div id="processContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+    <!-- Kill Process and Export Buttons -->
+    <div class="mt-8 flex space-x-4">
+      <button class="bg-red-500 text-white py-2 px-4 rounded" onclick="killProcess(prompt('Enter PID to kill:'))">Kill Process</button>
+      <!-- <button class="bg-blue-500 text-white py-2 px-4 rounded" onclick="exportCSV()">Export to CSV</button> -->
+      <button class="bg-green-500 text-white py-2 px-4 rounded" onclick="exportPDF()">Export to PDF</button>
+    </div>
+  </div>
+
+  <script>
+    let processes = [];
+    let pieChart = null, sigChart = null, geoChart = null, parentChart = null;
+
+    async function fetchProcesses() {
+      try {
+        const res = await fetch('/processes');
+        const data = await res.json();
+        processes = data.processes;
+        renderProcesses();
+        updateCharts();
+        updateTopCPU();
+      } catch (err) {
+        document.getElementById('loading').textContent = 'Failed to load process data.';
+        console.error(err);
+      }
+    }
+
+    function updateTopCPU() {
+      const top = [...processes].sort((a, b) => b.cpu - a.cpu).slice(0, 5);
+      const list = document.getElementById('topCpuList');
+      list.innerHTML = top.map(p => `<li>${p.name} (PID: ${p.pid}) - ${p.cpu.toFixed(2)}%</li>`).join('');
+    }
+
+    function updateCharts() {
+      const suspiciousCount = processes.filter(p => p.suspicious.length > 0).length;
+      const cleanCount = processes.length - suspiciousCount;
+
+      const signedCount = processes.filter(p => p.signed).length;
+      const unsignedCount = processes.length - signedCount;
+
+      const geoMap = {};
+      processes.forEach(p => {
+        (p.geoip || []).forEach(c => geoMap[c] = (geoMap[c] || 0) + 1);
+      });
+
+      const pidMap = {};
+      processes.forEach(p => {
+        const key = `${p.ppid} - ${p.parent_name || 'Unknown'}`;
+        pidMap[key] = (pidMap[key] || 0) + 1;
+      });
+
+      const updateChart = (id, chart, labels, data, colors) => {
+        const ctx = document.getElementById(id).getContext('2d');
+        if (chart) {
+          chart.data.labels = labels;
+          chart.data.datasets[0].data = data;
+          chart.update();
+        } else {
+          return new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [{ data, backgroundColor: colors }]
+            },
+            options: { plugins: { legend: { display: false } }, responsive: true }
+          });
+        }
+      };
+
+      pieChart = updateChart('processStatusPieChart', pieChart, ['Suspicious', 'Clean'], [suspiciousCount, cleanCount], ['#EF4444', '#10B981']);
+      sigChart = updateChart('signatureVerificationChart', sigChart, ['Signed', 'Unsigned'], [signedCount, unsignedCount], ['#3B82F6', '#F59E0B']);
+      parentChart = updateChart('parentPIDChart', parentChart, Object.keys(pidMap), Object.values(pidMap), ['#6366F1']);
+      geoChart = updateChart('geoIPChart', geoChart, Object.keys(geoMap), Object.values(geoMap), ['#6EE7B7']);
+    }
+
+    function createBadge(text, color) {
+      return `<span class="inline-block px-2 py-1 text-sm text-white bg-${color}-500 rounded-full mr-2 mb-1">${text}</span>`;
+    }
+
+    function renderProcesses() {
+      const container = document.getElementById('processContainer');
+      const loading = document.getElementById('loading');
+      loading.classList.add('hidden');
+      container.innerHTML = '';
+
+      const sortBy = document.getElementById('sortSelect').value;
+      const showSuspicious = document.getElementById('filterSuspicious').checked;
+
+      let filtered = [...processes];
+      if (showSuspicious) filtered = filtered.filter(proc => proc.suspicious.length > 0);
+      if (sortBy === 'cpu') filtered.sort((a, b) => b.cpu - a.cpu);
+      else if (sortBy === 'memory') filtered.sort((a, b) => b.memory - a.memory);
+
+      filtered.forEach(proc => {
+        const isSuspicious = proc.suspicious.length > 0;
+        const cardColor = isSuspicious ? 'border-red-500' : 'border-green-500';
+
+        container.innerHTML += `
+          <div class="bg-white border-l-4 ${cardColor} p-4 rounded-lg shadow">
+            <h2 class="text-xl font-semibold text-gray-800 mb-2">${proc.name}</h2>
+            <p><strong>PID:</strong> ${proc.pid}</p>
+            <p><strong>Parent:</strong> ${proc.parent_name || 'N/A'} (PID: ${proc.ppid})</p>
+            <p><strong>Status:</strong> ${proc.status}</p>
+            <p><strong>CPU:</strong> ${proc.cpu.toFixed(2)}%</p>
+            <p><strong>Memory:</strong> ${proc.memory.toFixed(2)}%</p>
+            <p><strong>Path:</strong> <span class="text-sm text-gray-500 break-words">${proc.path || 'N/A'}</span></p>
+            <p><strong>Hash (SHA-256):</strong> <span class="text-xs text-gray-600 break-all">${proc.hash || 'Unavailable'}</span></p>
+            <p><strong>Network:</strong> ${proc.network_connections.length > 0 
+              ? proc.network_connections.map(n => `<span class="block text-sm text-blue-700">${n}</span>`).join('') 
+              : '<span class="text-sm text-gray-400">No connections</span>'}
+            </p>
+             <p><strong>URLs:</strong> ${proc.urls.length > 0 
+               ? proc.urls.map(url => `<a href="${url}" target="_blank" class="block text-sm text-blue-600 underline">${url}</a>`).join('') 
+               : '<span class="text-sm text-gray-400">None</span>'}
+             </p>
+            <div class="mt-2">
+              ${proc.suspicious.length > 0 
+                ? proc.suspicious.map(tag => createBadge(tag, 'red')).join('') 
+                : createBadge('Clean', 'green')}
+            </div>
+            ${proc.yara_matches && proc.yara_matches.length > 0 ? `
+              <div class="mt-2 text-sm">
+                <strong class="block text-red-600">YARA Details:</strong>
+                ${proc.yara_matches.map(match => `
+                  <div class="mb-1">
+                    <span class="font-semibold">${match.rule}</span>
+                    <ul class="list-disc list-inside text-gray-700">
+                      ${match.strings.map(s => `<li>${s}</li>`).join('')}
+                    </ul>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+    }
+
+    function killProcess(pid) {
+      if (!pid) return;
+      fetch(`/kill_process/${pid}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => alert(data.message));
+    }
+
+    function exportCSV() {
+      window.location.href = '/export_csv';
+    }
+
+    function exportPDF() {
+      window.location.href = '/export_pdf';
+    }
+
+    fetchProcesses();
+    setInterval(fetchProcesses, 120000);
+  </script>
+</body>
+</html>

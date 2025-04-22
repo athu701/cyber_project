@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Process Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 6px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        th {
+            background-color: #eee;
+        }
+    </style>
+</head>
+<body>
+    <h1>System Process Report</h1>
+    <p>Generated at: {{ processes[0].timestamp if processes else '' }}</p>
+    <table>
+        <thead>
+            <tr>
+                <th>PID</th>
+                <th>Name</th>
+                <th>User</th>
+                <th>CPU %</th>
+                <th>Memory %</th>
+                <th>Status</th>
+                <th>Path</th>
+                <th>Signature</th>
+                <th>Risk Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in processes %}
+            <tr>
+                <td>{{ p.pid }}</td>
+                <td>{{ p.name }}</td>
+                <td>{{ p.parent_name }}</td>
+                <td>{{ '%.2f' % p.cpu }}</td>
+                <td>{{ '%.2f' % p.memory }}</td>
+                <td>{{ p.status }}</td>
+                <td>{{ p.path }}</td>
+                <td>{{ p.signature }}</td>
+                <td>{{ p.risk_score }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
