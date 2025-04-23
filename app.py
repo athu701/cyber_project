@@ -16,8 +16,16 @@ import pdfkit
 # path_wkhtmltopdf = r"C:\Users\hp\Downloads\wkhtmltox-0.12.6-1.mxe-cross-win64\wkhtmltox\bin\wkhtmltopdf.exe"
 # config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 
-path_wkhtmltopdf = os.getenv("WKHTMLTOPDF_PATH", r"C:\Users\hp\Downloads\wkhtmltox-0.12.6-1.mxe-cross-win64\wkhtmltox\bin\wkhtmltopdf.exe")
+if os.name == 'nt':
+    path_wkhtmltopdf = r"C:\Users\hp\Downloads\wkhtmltox-0.12.6-1.mxe-cross-win64\wkhtmltox\bin\wkhtmltopdf.exe"
+else:
+    path_wkhtmltopdf = os.getenv("WKHTMLTOPDF_PATH", "/usr/bin/wkhtmltopdf")
+
+if not os.path.isfile(path_wkhtmltopdf):
+    raise RuntimeError(f"wkhtmltopdf not found at {path_wkhtmltopdf}")
+
 config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+
 
 app = Flask(__name__)
 
