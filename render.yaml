@@ -1,9 +1,11 @@
 services:
   - type: web
-    name: cyber_project
-    env: python
+    name: cyber-monitor
+    runtime: python
     buildCommand: |
       apt-get update && apt-get install -y wkhtmltopdf
       pip install -r requirements.txt
     startCommand: python app.py
-    plan: free
+    envVars:
+      - key: WKHTMLTOPDF_PATH
+        value: /usr/bin/wkhtmltopdf

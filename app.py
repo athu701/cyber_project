@@ -13,7 +13,10 @@ import csv
 from io import StringIO
 import pdfkit
 
-path_wkhtmltopdf = r"C:\Users\hp\Downloads\wkhtmltox-0.12.6-1.mxe-cross-win64\wkhtmltox\bin\wkhtmltopdf.exe"
+# path_wkhtmltopdf = r"C:\Users\hp\Downloads\wkhtmltox-0.12.6-1.mxe-cross-win64\wkhtmltox\bin\wkhtmltopdf.exe"
+# config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+
+path_wkhtmltopdf = os.getenv("WKHTMLTOPDF_PATH", r"C:\Users\hp\Downloads\wkhtmltox-0.12.6-1.mxe-cross-win64\wkhtmltox\bin\wkhtmltopdf.exe")
 config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 
 app = Flask(__name__)
