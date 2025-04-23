@@ -13,18 +13,18 @@ import csv
 from io import StringIO
 import pdfkit
 
-# path_wkhtmltopdf = r"C:\Users\hp\Downloads\wkhtmltox-0.12.6-1.mxe-cross-win64\wkhtmltox\bin\wkhtmltopdf.exe"
-# config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
-
-if os.name == 'nt':
-    path_wkhtmltopdf = r"C:\Users\hp\Downloads\wkhtmltox-0.12.6-1.mxe-cross-win64\wkhtmltox\bin\wkhtmltopdf.exe"
-else:
-    path_wkhtmltopdf = os.getenv("WKHTMLTOPDF_PATH", "/usr/bin/wkhtmltopdf")
-
-if not os.path.isfile(path_wkhtmltopdf):
-    raise RuntimeError(f"wkhtmltopdf not found at {path_wkhtmltopdf}")
-
+path_wkhtmltopdf = r"C:\Users\hp\Downloads\wkhtmltox-0.12.6-1.mxe-cross-win64\wkhtmltox\bin\wkhtmltopdf.exe"
 config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+
+# if os.name == 'nt':
+#     path_wkhtmltopdf = r"C:\Users\hp\Downloads\wkhtmltox-0.12.6-1.mxe-cross-win64\wkhtmltox\bin\wkhtmltopdf.exe"
+# else:
+#     path_wkhtmltopdf = os.getenv("WKHTMLTOPDF_PATH", "/usr/bin/wkhtmltopdf")
+
+# if not os.path.isfile(path_wkhtmltopdf):
+#     raise RuntimeError(f"wkhtmltopdf not found at {path_wkhtmltopdf}")
+
+# config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
 
 
 app = Flask(__name__)
@@ -237,10 +237,7 @@ def index():
 def processes():
     return jsonify(get_process_info())
 
-# if __name__ == '__main__':
-#     app.run(debug=True, port=8080)
-
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(debug=True, port=8080)
+
 
