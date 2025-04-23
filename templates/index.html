@@ -12,6 +12,14 @@
   <div class="container mx-auto px-4 py-8">
     <h1 class="text-4xl font-bold text-center text-blue-600 mb-8">Real-Time Process Monitoring Dashboard</h1>
 
+    <!-- Auto-refresh Status -->
+    <div class="flex justify-between items-center mb-4">
+      <!-- <p id="refreshTimer" class="text-sm text-gray-600">Auto-refresh in: 5:00</p> -->
+      <div class="flex items-center space-x-4">
+        <span id="refreshFlash" class="text-green-600 text-sm font-medium hidden">Auto-refreshed ✅</span>
+      </div>
+    </div>
+
     <!-- Dashboard Charts -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
       <div class="bg-white p-6 rounded-lg shadow">
@@ -63,7 +71,6 @@
     <!-- Kill Process and Export Buttons -->
     <div class="mt-8 flex space-x-4">
       <button class="bg-red-500 text-white py-2 px-4 rounded" onclick="killProcess(prompt('Enter PID to kill:'))">Kill Process</button>
-      <!-- <button class="bg-blue-500 text-white py-2 px-4 rounded" onclick="exportCSV()">Export to CSV</button> -->
       <button class="bg-green-500 text-white py-2 px-4 rounded" onclick="exportPDF()">Export to PDF</button>
     </div>
   </div>
@@ -71,6 +78,8 @@
   <script>
     let processes = [];
     let pieChart = null, sigChart = null, geoChart = null, parentChart = null;
+    let refreshInterval = 300; // Updated to 5 minutes (300 seconds)
+    let secondsLeft = refreshInterval;
 
     async function fetchProcesses() {
       try {
@@ -80,6 +89,7 @@
         renderProcesses();
         updateCharts();
         updateTopCPU();
+        flashRefreshMessage();
       } catch (err) {
         document.getElementById('loading').textContent = 'Failed to load process data.';
         console.error(err);
@@ -204,16 +214,40 @@
         .then(data => alert(data.message));
     }
 
-    function exportCSV() {
-      window.location.href = '/export_csv';
-    }
-
     function exportPDF() {
       window.location.href = '/export_pdf';
     }
 
+    function updateTimerDisplay() {
+      const minutes = Math.floor(secondsLeft / 60);
+      const seconds = String(secondsLeft % 60).padStart(2, '0');
+      document.getElementById('refreshTimer').textContent = `Auto-refresh in: ${minutes}:${seconds}`;
+    }
+
+    function flashRefreshMessage() {
+      const el = document.getElementById('refreshFlash');
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 3000);
+    }
+
+    function manualRefresh() {
+      fetchProcesses();
+      secondsLeft = refreshInterval;
+      flashRefreshMessage();
+    }
+
+    setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft <= 0) {
+        fetchProcesses();
+        flashRefreshMessage();
+        secondsLeft = refreshInterval;
+      }
+      updateTimerDisplay();
+    }, 1000);
+
     fetchProcesses();
-    setInterval(fetchProcesses, 120000);
+    updateTimerDisplay();
   </script>
 </body>
 </html>

@@ -229,6 +229,23 @@ def snapshot():
     
     return jsonify({"status": "success", "message": "Snapshot taken successfully."})
 
+@app.route('/schedule_refresh', methods=['POST'])
+def schedule_refresh():
+    try:
+        # Trigger process data refresh
+        refreshed_data = get_process_info()
+        return jsonify({
+            "status": "success",
+            "message": "Process data refreshed successfully.",
+            "data": refreshed_data
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Failed to refresh process data: {str(e)}"
+        }), 500
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
